@@ -3,127 +3,109 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-// Official questions derived directly from the attached Burkina Faso PMCED 2023 Country Report
-const burkinaFasoReportQuestions = [
+// Official Quiz Questions: Basilar Membrane Mechanics & Nonlinearity (MSc Audiology)
+const audiologyQuestions = [
   {
-    questionText: "Quel est l'intitulé officiel du rapport pays présenté par le Burkina Faso en juin 2024 ?",
-    optionA: "Rapport national sur la transition énergétique et les mines",
-    optionB: "Rapport pays de l'exercice 2023 de suivi du Partenariat mondial pour une coopération efficace au service du développement (PMCED)",
-    optionC: "Bilan décennal sur les investissements directs étrangers",
-    optionD: "Rapport d'audit de la Chambre des comptes de l'Union économique et monétaire",
-    correctOption: "B",
-    explanation: "Le rapport a été élaboré par la Direction générale de la coopération (DGCOOP) du Ministère de l'Économie et des Finances et porte sur le suivi de l'exercice 2023 du PMCED."
-  },
-  {
-    questionText: "Combien de dimensions fondamentales sont évaluées dans le cadre de suivi standard de Busan (PMCED) ?",
-    optionA: "Deux (2) dimensions",
-    optionB: "Trois (3) dimensions",
-    optionC: "Quatre (4) dimensions",
-    optionD: "Six (6) dimensions",
-    correctOption: "C",
-    explanation: "Le questionnaire standard évalue quatre dimensions : « Ensemble de la société », « État et utilisation des systèmes nationaux », « Transparence » et « Ne laisser personne de côté »."
-  },
-  {
-    questionText: "Lors de l'exercice 2023 de suivi du PMCED au Burkina Faso, combien de Partenaires du développement ont renseigné les questionnaires sur les 43 intéressés ?",
-    optionA: "15 partenaires (34,8%)",
-    optionB: "27 partenaires (62,8%)",
-    optionC: "38 partenaires (88,3%)",
-    optionD: "Tous les 43 partenaires (100%)",
-    correctOption: "B",
-    explanation: "Selon la Figure 1 du rapport (page 17), 27 partenaires sur 43 ayant identifié des points focaux ont effectivement répondu, soit un taux de réponse de 62,8%."
-  },
-  {
-    questionText: "Quel score élevé (sur une échelle de 0 à 1) le Burkina Faso a-t-il obtenu pour la composante « Planification » en 2023 ?",
-    optionA: "0,52",
-    optionB: "0,73",
-    optionC: "0,95",
-    optionD: "0,32",
-    correctOption: "C",
-    explanation: "La composante « Planification » (mesurant la qualité des stratégies nationales de développement et des cadres de résultats) a atteint un score très élevé de 0,95 en 2023, contre 0,93 en 2018."
-  },
-  {
-    questionText: "Dans la dimension « État et utilisation des systèmes nationaux », quelle composante a enregistré le score le plus faible (0,32 en 2023 contre 0,56 en 2018) ?",
-    optionA: "Gestion des finances publiques (GFP)",
-    optionB: "Budgétisation sensible au genre",
-    optionC: "Mécanismes de redevabilité",
-    optionD: "Passation des marchés",
+    questionText: "What is the main mechanical property of the basilar membrane that gradually changes from the base toward the apex of the cochlea and contributes to frequency tuning?",
+    optionA: "Stiffness",
+    optionB: "Blood supply",
+    optionC: "Endolymph volume",
+    optionD: "Middle-ear pressure",
     correctOption: "A",
-    explanation: "La Gestion des finances publiques a connu une baisse significative à 0,32, expliquée par le faible recours des partenaires aux procédures nationales de transmission de fonds et l'absence d'une évaluation PEFA récente."
+    explanation: "The stiffness gradient of the basilar membrane—progressively decreasing from the stiff base to the flexible apex—is the primary mechanical property governing passive frequency tuning in the cochlea."
   },
   {
-    questionText: "Pour l'indicateur « Budgétisation sensible au genre », quelle note le Burkina Faso a-t-il obtenue en 2023 ?",
-    optionA: "Note 0",
-    optionB: "Note 0,5",
-    optionC: "Note 0,8",
-    optionD: "Note 1 (Score parfait)",
-    correctOption: "D",
-    explanation: "Le Burkina Faso a obtenu la note maximale de 1 (comme en 2018). Le pays dispose d'un système de suivi et de publication des ressources allouées au genre (105,02 milliards FCFA en 2022, soit 5,04% du budget)."
-  },
-  {
-    questionText: "Dans la dimension « Transparence », quel est le score de l'action du gouvernement pour la mise à disposition publique des informations sur la Coopération ?",
-    optionA: "Score de 0,40",
-    optionB: "Score de 0,60",
-    optionC: "Score de 0,85",
-    optionD: "Score de 1,00",
-    correctOption: "D",
-    explanation: "L'indicateur mesurant la mise à la disposition du public des informations sur la Coopération pour le développement par le Gouvernement affiche un score parfait de 1."
-  },
-  {
-    questionText: "Comment se nomme la plateforme en ligne mise en place par le Burkina Faso pour transmettre et suivre les données sur l'aide et les projets des partenaires ?",
-    optionA: "PGA (Plateforme de Gestion de l'Aide)",
-    optionB: "SIGAS (Système d'Information et de Gestion de l'Aide au Sahel)",
-    optionC: "PEFA-Burkina",
-    optionD: "Portail ODD 2030",
+    questionText: "A low-frequency sound produces its maximum basilar-membrane displacement closer to the apex than a high-frequency sound. Which principle does this demonstrate?",
+    optionA: "Tonotopic organization",
+    optionB: "Temporal masking",
+    optionC: "Binaural summation",
+    optionD: "Middle-ear resonance",
     correctOption: "A",
-    explanation: "Le Burkina Faso a mis en place la Plateforme de Gestion de l'Aide (PGA) qui permet aux partenaires de transmettre directement en ligne leurs données d'aide et d'exécution des dépenses."
+    explanation: "Tonotopic organization is the spatial mapping of frequency along the cochlea: high frequencies peak at the narrow, stiff basal region, whereas low frequencies peak at the compliant apical region."
   },
   {
-    questionText: "Quelle structure ou groupe de parties prenantes fait l'objet de l'Évaluation des Principes de Kampala (EPK) ?",
-    optionA: "Les banques centrales de la sous-région",
-    optionB: "Le Secteur Privé (ESP - Engagement du Secteur Privé)",
-    optionC: "Les représentations diplomatiques uniquement",
-    optionD: "Les agences de notation internationales",
-    correctOption: "B",
-    explanation: "L'EPK est un outil novateur conçu pour évaluer l'Engagement du secteur privé (ESP) dans le cadre de la Coopération pour le développement auprès de l'ensemble des parties prenantes."
-  },
-  {
-    questionText: "Dans la dimension « Ensemble de la société », quel score le sous-indicateur « Contrôle parlementaire » a-t-il obtenu en 2023 ?",
-    optionA: "0,45",
-    optionB: "0,62",
-    optionC: "0,81",
-    optionD: "0,98",
-    correctOption: "C",
-    explanation: "Le contrôle parlementaire a obtenu un score élevé de 0,81 grâce à la transmission régulière d'informations au Parlement et à la ratification systématique des accords de financement."
-  },
-  {
-    questionText: "Lequel de ces projets est explicitement cité dans le rapport comme facilitant l'accès des MPME à la technologie et aux compétences ?",
-    optionA: "Le projet ECOTEC",
-    optionB: "Le programme APD-Plus",
-    optionC: "Le fonds Busan-Finance",
-    optionD: "Le projet Horizon-2050",
+    questionText: "The basal portion of the basilar membrane is generally stiffer and responds preferentially to higher frequencies than the more flexible apical portion. True or False?",
+    optionA: "True",
+    optionB: "False",
+    optionC: "True only in diseased cochleae",
+    optionD: "False, the apex is stiffer than the base",
     correctOption: "A",
-    explanation: "Le Projet d'appui à l'Entreprenariat, au développement des compétences et à l'adoption technologique (ECOTEC) vise à améliorer l'accès des MPME à la technologie et à une main-d'œuvre qualifiée (page 60)."
+    explanation: "True. The basilar membrane is narrowest and stiffest near the oval window (base), making it resonant at high frequencies, and widest and most flexible at the helicotrema (apex), where low frequencies peak."
   },
   {
-    questionText: "Quelle direction générale du Ministère de l'Économie et des Finances assure la coordination nationale du suivi du PMCED au Burkina Faso ?",
-    optionA: "La Direction Générale des Impôts (DGI)",
-    optionB: "La Direction Générale de la Coopération (DGCOOP)",
-    optionC: "La Direction Générale du Budget (DGB)",
-    optionD: "La Direction Générale des Douanes (DGD)",
-    correctOption: "B",
-    explanation: "La DGCOOP (Direction générale de la coopération) assure la coordination nationale de l'exercice sous la supervision du Ministère de l'Économie et des Finances."
+    questionText: "If the cochlea behaved as a completely linear system, which response would be expected when the intensity of a tone is increased?",
+    optionA: "The basilar-membrane response would increase proportionally",
+    optionB: "The response would stop increasing above a certain level",
+    optionC: "The response would decrease as intensity increases",
+    optionD: "The response would become independent of frequency",
+    correctOption: "A",
+    explanation: "In a purely linear system, the output grows in direct 1:1 proportion to input changes across all stimulus intensities without compression or saturation."
+  },
+  {
+    questionText: "What does the term 'compressive nonlinearity' of the cochlea mainly describe?",
+    optionA: "A smaller increase in response for a given increase in sound level at higher levels",
+    optionB: "A complete absence of basilar-membrane movement at high levels",
+    optionC: "An increase in response that is greater than the increase in sound level",
+    optionD: "Movement of the basilar membrane only toward the apex",
+    correctOption: "A",
+    explanation: "Compressive nonlinearity refers to the reduction of basilar-membrane gain at mid-to-high sound levels, effectively compressing an acoustic dynamic range of >120 dB into a manageable displacement range."
+  },
+  {
+    questionText: "Which combination of factors contributes directly to the mechanical response of the basilar membrane to sound?",
+    optionA: "Basilar membrane properties, cochlear fluid motion, and outer hair cell activity",
+    optionB: "Pinna shape and ear canal acoustics alone",
+    optionC: "Middle-ear muscle contractions and vestibular fluid pressure only",
+    optionD: "Purely passive bone conduction without outer hair cell involvement",
+    correctOption: "A",
+    explanation: "The basilar membrane's mechanical response is governed by its intrinsic physical properties (stiffness/mass gradient), hydrodynamics of the cochlear fluids (traveling wave), and active electromotility of the outer hair cells (cochlear amplifier)."
+  },
+  {
+    questionText: "Why is the traveling wave important for understanding basilar-membrane mechanics?",
+    optionA: "It allows different frequencies to produce maximum displacement at different cochlear locations",
+    optionB: "It causes all frequencies to peak at exactly the same location",
+    optionC: "It prevents the basilar membrane from moving",
+    optionD: "It converts acoustic energy directly into neural impulses",
+    correctOption: "A",
+    explanation: "The traveling wave propagates from base to apex, slowing down and peaking in amplitude at the specific tonotopic place corresponding to the sound's frequency before rapidly decaying."
+  },
+  {
+    questionText: "Outer hair cells contribute to the active mechanical process of the cochlea and therefore play a role in cochlear amplification and compression. True or False?",
+    optionA: "True",
+    optionB: "False",
+    optionC: "True only in post-mortem cochleae",
+    optionD: "False, outer hair cells only provide sensory transduction to the brain",
+    correctOption: "A",
+    explanation: "True. Through prestin-mediated somatic electromotility, outer hair cells feed mechanical energy back into the organ of Corti, delivering 40-50 dB of amplification, sharp frequency tuning, and compressive nonlinearity."
+  },
+  {
+    questionText: "A tone is presented at a higher intensity, and the basilar-membrane response increases but not in direct proportion to the increase in stimulus level. Which feature of cochlear mechanics does this best demonstrate?",
+    optionA: "Nonlinear compression",
+    optionB: "Tonotopic mapping",
+    optionC: "Binaural interaction",
+    optionD: "Temporal integration",
+    correctOption: "A",
+    explanation: "A sub-proportional growth of mechanical vibration with increasing stimulus level is the direct physical manifestation of active cochlear nonlinear compression."
+  },
+  {
+    questionText: "Which of the following statements correctly summarizes the physical characteristics of the basilar membrane?",
+    optionA: "It is relatively wider and more flexible toward the apex, stiffer at the base, and this gradient drives frequency selectivity",
+    optionB: "It has identical uniform stiffness throughout its entire length",
+    optionC: "It is stiffest at the apex and floppiest at the base",
+    optionD: "It responds uniformly to all audible sound frequencies at every cochlear partition",
+    correctOption: "A",
+    explanation: "The basilar membrane is narrow and stiff at the cochlear base, widening and becoming significantly more compliant toward the apex, creating the physical impedance gradient required for place-frequency analysis."
   }
 ];
 
 async function main() {
   console.log("🌱 Starting database seeding...");
 
-  // 1. Seed or update Quiz Settings tailored to Burkina Faso PMCED Report
+  // 1. Seed or update Quiz Settings
   const settings = await prisma.quizSettings.upsert({
     where: { id: "default-settings" },
     update: {
-      quizTitle: "Burkina Faso - Évaluation PMCED 2023",
-      quizDescription: "Testez vos connaissances sur le rapport pays de suivi du Partenariat mondial pour une coopération efficace au service du développement (PMCED - Burkina Faso 2023).",
+      quizTitle: "Basilar Membrane Mechanics & Nonlinearity",
+      quizDescription: "Medium-Level Quiz – MSc Audiology. Test your understanding of cochlear mechanics, tonotopic organization, traveling waves, and compressive nonlinearity.",
       basePoints: 100,
       gracePeriodSeconds: 5,
       pointsPerSecond: 1,
@@ -131,8 +113,8 @@ async function main() {
     },
     create: {
       id: "default-settings",
-      quizTitle: "Burkina Faso - Évaluation PMCED 2023",
-      quizDescription: "Testez vos connaissances sur le rapport pays de suivi du Partenariat mondial pour une coopération efficace au service du développement (PMCED - Burkina Faso 2023).",
+      quizTitle: "Basilar Membrane Mechanics & Nonlinearity",
+      quizDescription: "Medium-Level Quiz – MSc Audiology. Test your understanding of cochlear mechanics, tonotopic organization, traveling waves, and compressive nonlinearity.",
       basePoints: 100,
       gracePeriodSeconds: 5,
       pointsPerSecond: 1,
@@ -140,7 +122,7 @@ async function main() {
       negativeMarkingEnabled: false,
       negativePoints: 10,
       allowNegativeTotal: false,
-      quizEnabled: true
+      quizEnabled: true,
     }
   });
   console.log(`✅ Quiz Settings initialized: "${settings.quizTitle}"`);
@@ -163,10 +145,17 @@ async function main() {
   });
   console.log(`✅ Admin account created/updated: ${admin.email}`);
 
-  // 3. Seed / Update Questions from the Official Burkina Faso Report
-  console.log("Seeding questions from the official Burkina Faso PMCED 2023 report...");
+  // 3. Clear older questions if necessary and seed MSc Audiology questions
+  console.log("Seeding MSc Audiology questions...");
+  // Deactivate any questions that don't match the new question texts
+  const targetTexts = audiologyQuestions.map(q => q.questionText);
+  await prisma.question.updateMany({
+    where: { questionText: { notIn: targetTexts } },
+    data: { isActive: false }
+  });
+
   let count = 0;
-  for (const q of burkinaFasoReportQuestions) {
+  for (const q of audiologyQuestions) {
     const existing = await prisma.question.findFirst({
       where: { questionText: q.questionText }
     });
@@ -200,8 +189,7 @@ async function main() {
     }
     count++;
   }
-  console.log(`✅ Successfully seeded/updated ${count} questions from the Burkina Faso PMCED 2023 report.`);
-
+  console.log(`✅ Successfully seeded/updated ${count} MSc Audiology questions.`);
   console.log("🎉 Seeding completed successfully!");
 }
 
