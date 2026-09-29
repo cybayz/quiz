@@ -87,3 +87,43 @@ export function clearAdminAuthCookie() {
   const cookieStore = cookies();
   cookieStore.delete(ADMIN_COOKIE_NAME);
 }
+
+export interface ParticipantTokenPayload {
+  participantId: string;
+  sessionId: string;
+}
+
+/**
+ * Creates and signs a secure JWT reconnection token for a live quiz participant.
+ */
+export async function signParticipantToken(
+  participantId: string,
+  sessionId: string
+): Promise<string> {
+  return await new SignJWT({ participantId, sessionId })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("24h")
+    .sign(secretKey);
+}
+
+/**
+ * Verifies a participant JWT reconnection token.
+ */
+export async function verifyParticipantToken(
+  token: string
+): Promise<ParticipantTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, secretKey);
+    if (!payload.participantId || !payload.sessionId) {
+      return null;
+    }
+    return {
+      participantId: payload.participantId as string,
+      sessionId: payload.sessionId as string,
+    };
+  } catch {
+    return null;
+  }
+}
+

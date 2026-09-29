@@ -68,3 +68,16 @@ export function generateCertificateId(): string {
   const timestampPart = Date.now().toString(36).substring(4).toUpperCase();
   return `CERT-${year}-${randomPart}-${timestampPart}`;
 }
+
+/**
+ * Generates a clean, readable 6-character session join code (no ambiguous 0/O, 1/I).
+ */
+export function generateSessionCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+

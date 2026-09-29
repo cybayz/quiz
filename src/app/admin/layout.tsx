@@ -9,6 +9,7 @@ import {
   Trophy,
   Settings,
   LogOut,
+  Presentation,
   Shield,
 } from "lucide-react";
 
@@ -20,8 +21,8 @@ export default function AdminLayout({
   const pathname = usePathname();
   const router = useRouter();
 
-  // Do not wrap the login page in the admin nav layout
-  if (pathname === "/admin/login") {
+  // Do not wrap the login page or live presentation projector screen in the admin nav layout
+  if (pathname === "/admin/login" || pathname.startsWith("/admin/live/")) {
     return <>{children}</>;
   }
 
@@ -38,6 +39,7 @@ export default function AdminLayout({
   const navItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Questions", href: "/admin/questions", icon: HelpCircle },
+    { name: "Live Quiz", href: "/admin/live-quiz", icon: Presentation },
     { name: "Results", href: "/admin/results", icon: FileSpreadsheet },
     { name: "Leaderboard", href: "/admin/leaderboard", icon: Trophy },
     { name: "Settings", href: "/admin/settings", icon: Settings },

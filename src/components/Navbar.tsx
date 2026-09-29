@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, Trophy, Shield, HelpCircle, Menu, X } from "lucide-react";
+import { Sparkles, Trophy, Shield, HelpCircle, Menu, X, Radio } from "lucide-react";
 import { useState } from "react";
 
 export default function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // If in active quiz attempt screen, show minimal distraction-free header
-  const isTakingQuiz = pathname.startsWith("/quiz/");
+  // If in active quiz attempt or live presentation screen, show minimal distraction-free header
+  const isTakingQuiz =
+    pathname.startsWith("/quiz/") ||
+    pathname.startsWith("/live/") ||
+    pathname.startsWith("/admin/live/");
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
@@ -46,6 +49,20 @@ export default function Navbar() {
                   <span className="flex items-center gap-1.5">
                     <HelpCircle className="w-4 h-4 text-indigo-400" />
                     Quiz Home
+                  </span>
+                </Link>
+
+                <Link
+                  href="/live/join"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    pathname.startsWith("/live/join")
+                      ? "text-white bg-emerald-600/20 text-emerald-300 border border-emerald-500/30"
+                      : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+                    Join Live Quiz
                   </span>
                 </Link>
 
@@ -110,6 +127,14 @@ export default function Navbar() {
             >
               <HelpCircle className="w-5 h-5 text-indigo-400" />
               Quiz Home
+            </Link>
+            <Link
+              href="/live/join"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium text-emerald-400 hover:bg-slate-800"
+            >
+              <Radio className="w-5 h-5 text-emerald-400 animate-pulse" />
+              Join Live Quiz
             </Link>
             <Link
               href="/leaderboard"

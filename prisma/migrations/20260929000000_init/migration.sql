@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "LiveQuizStatus" AS ENUM ('WAITING', 'QUESTION_READY', 'QUESTION_ACTIVE', 'LEADERBOARD', 'COMPLETED');
+
 -- CreateTable
 CREATE TABLE "admin_users" (
     "id" TEXT NOT NULL,
@@ -86,6 +89,63 @@ CREATE TABLE "quiz_settings" (
     CONSTRAINT "quiz_settings_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "live_quiz_sessions" (
+    "id" TEXT NOT NULL,
+    "sessionCode" TEXT NOT NULL,
+    "quizTitle" TEXT NOT NULL,
+    "status" "LiveQuizStatus" NOT NULL DEFAULT 'WAITING',
+    "questionOrder" TEXT NOT NULL,
+    "currentQuestionIndex" INTEGER NOT NULL DEFAULT 0,
+    "questionStartedAt" TIMESTAMP(3),
+    "questionEndsAt" TIMESTAMP(3),
+    "stateVersion" INTEGER NOT NULL DEFAULT 1,
+    "createdById" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "completedAt" TIMESTAMP(3),
+
+    CONSTRAINT "live_quiz_sessions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "live_quiz_participants" (
+    "id" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "participantName" TEXT NOT NULL,
+    "participantToken" TEXT NOT NULL,
+    "totalScore" INTEGER NOT NULL DEFAULT 0,
+    "finalRank" INTEGER,
+    "correctCount" INTEGER NOT NULL DEFAULT 0,
+    "wrongCount" INTEGER NOT NULL DEFAULT 0,
+    "unansweredCount" INTEGER NOT NULL DEFAULT 0,
+    "totalResponseTime" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "certificateId" TEXT,
+    "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "live_quiz_participants_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "live_quiz_answers" (
+    "id" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "participantId" TEXT NOT NULL,
+    "questionId" TEXT NOT NULL,
+    "questionIndex" INTEGER NOT NULL,
+    "questionSnapshot" TEXT NOT NULL,
+    "selectedOption" TEXT NOT NULL,
+    "correctOption" TEXT NOT NULL,
+    "isCorrect" BOOLEAN NOT NULL,
+    "pointsAwarded" INTEGER NOT NULL,
+    "responseTime" DOUBLE PRECISION NOT NULL,
+    "cumulativeScore" INTEGER NOT NULL DEFAULT 0,
+    "answeredAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "live_quiz_answers_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "admin_users_email_key" ON "admin_users"("email");
 
@@ -104,8 +164,47 @@ CREATE INDEX "quiz_answers_attemptId_idx" ON "quiz_answers"("attemptId");
 -- CreateIndex
 CREATE UNIQUE INDEX "quiz_answers_attemptId_questionId_key" ON "quiz_answers"("attemptId", "questionId");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "live_quiz_sessions_sessionCode_key" ON "live_quiz_sessions"("sessionCode");
+
+-- CreateIndex
+CREATE INDEX "live_quiz_sessions_status_idx" ON "live_quiz_sessions"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "live_quiz_participants_participantToken_key" ON "live_quiz_participants"("participantToken");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "live_quiz_participants_certificateId_key" ON "live_quiz_participants"("certificateId");
+
+-- CreateIndex
+CREATE INDEX "live_quiz_participants_sessionId_totalScore_idx" ON "live_quiz_participants"("sessionId", "totalScore");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "live_quiz_participants_sessionId_participantName_key" ON "live_quiz_participants"("sessionId", "participantName");
+
+-- CreateIndex
+CREATE INDEX "live_quiz_answers_sessionId_questionIndex_idx" ON "live_quiz_answers"("sessionId", "questionIndex");
+
+-- CreateIndex
+CREATE INDEX "live_quiz_answers_participantId_idx" ON "live_quiz_answers"("participantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "live_quiz_answers_sessionId_participantId_questionId_key" ON "live_quiz_answers"("sessionId", "participantId", "questionId");
+
 -- AddForeignKey
 ALTER TABLE "quiz_answers" ADD CONSTRAINT "quiz_answers_attemptId_fkey" FOREIGN KEY ("attemptId") REFERENCES "quiz_attempts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "quiz_answers" ADD CONSTRAINT "quiz_answers_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "questions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "live_quiz_participants" ADD CONSTRAINT "live_quiz_participants_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "live_quiz_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "live_quiz_answers" ADD CONSTRAINT "live_quiz_answers_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "live_quiz_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "live_quiz_answers" ADD CONSTRAINT "live_quiz_answers_participantId_fkey" FOREIGN KEY ("participantId") REFERENCES "live_quiz_participants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "live_quiz_answers" ADD CONSTRAINT "live_quiz_answers_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "questions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -31,6 +31,7 @@ model Question {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   answers       QuizAnswer[]
+  liveAnswers   LiveQuizAnswer[]
 
   @@index([isActive])
   @@map("questions")
@@ -96,4 +97,79 @@ model QuizSettings {
   updatedAt              DateTime @updatedAt
 
   @@map("quiz_settings")
+}
+
+enum LiveQuizStatus {
+  WAITING
+  QUESTION_READY
+  QUESTION_ACTIVE
+  LEADERBOARD
+  COMPLETED
+}
+
+model LiveQuizSession {
+  id                   String                @id @default(cuid())
+  sessionCode          String                @unique
+  quizTitle            String
+  status               LiveQuizStatus        @default(WAITING)
+  questionOrder        String                @db.Text // JSON array string of question IDs: ["q1", "q2", ...]
+  currentQuestionIndex Int                   @default(0)
+  questionStartedAt    DateTime?
+  questionEndsAt       DateTime?
+  stateVersion         Int                   @default(1) // incremented on state change
+  createdById          String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  completedAt          DateTime?
+  participants         LiveQuizParticipant[]
+  answers              LiveQuizAnswer[]
+
+  @@index([status])
+  @@map("live_quiz_sessions")
+}
+
+model LiveQuizParticipant {
+  id                String           @id @default(cuid())
+  sessionId         String
+  session           LiveQuizSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participantName   String
+  participantToken  String           @unique @default(cuid())
+  totalScore        Int              @default(0)
+  finalRank         Int?
+  correctCount      Int              @default(0)
+  wrongCount        Int              @default(0)
+  unansweredCount   Int              @default(0)
+  totalResponseTime Float            @default(0)
+  certificateId     String?          @unique
+  joinedAt          DateTime         @default(now())
+  lastSeenAt        DateTime         @default(now())
+  answers           LiveQuizAnswer[]
+
+  @@unique([sessionId, participantName])
+  @@index([sessionId, totalScore])
+  @@map("live_quiz_participants")
+}
+
+model LiveQuizAnswer {
+  id               String              @id @default(cuid())
+  sessionId        String
+  session          LiveQuizSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participantId    String
+  participant      LiveQuizParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  questionId       String
+  question         Question            @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  questionIndex    Int
+  questionSnapshot String              @db.Text // snapshot of question
+  selectedOption   String              // 'A', 'B', 'C', 'D'
+  correctOption    String              // 'A', 'B', 'C', 'D'
+  isCorrect        Boolean
+  pointsAwarded    Int
+  responseTime     Float               // in seconds
+  cumulativeScore  Int                 @default(0)
+  answeredAt       DateTime            @default(now())
+
+  @@unique([sessionId, participantId, questionId])
+  @@index([sessionId, questionIndex])
+  @@index([participantId])
+  @@map("live_quiz_answers")
 }

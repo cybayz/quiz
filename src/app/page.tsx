@@ -13,6 +13,7 @@ import {
   ArrowRight,
   ShieldAlert,
   Loader2,
+  Radio,
 } from "lucide-react";
 
 interface SettingsInfo {
@@ -28,11 +29,62 @@ interface SettingsInfo {
 
 export default function LandingPage() {
   const router = useRouter();
+  const [activeMode, setActiveMode] = useState<"standard" | "live">("standard");
   const [participantName, setParticipantName] = useState("");
+  const [liveCode, setLiveCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetchingSettings, setFetchingSettings] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [settings, setSettings] = useState<SettingsInfo | null>(null);
+
+  const handleJoinLive = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedCode = liveCode.trim().toUpperCase();
+    const trimmedName = participantName.trim();
+
+    if (!trimmedCode || trimmedCode.length !== 6) {
+      setErrorMessage("Please enter a valid 6-character session code.");
+      return;
+    }
+
+    if (!trimmedName || trimmedName.length < 2) {
+      setErrorMessage("Please enter your name (at least 2 characters).");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const res = await fetch("/api/live/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionCode: trimmedCode,
+          participantName: trimmedName,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMessage(data.error || "Failed to join live quiz.");
+        setLoading(false);
+        return;
+      }
+
+      // Store reconnection token in localStorage
+      if (typeof window !== "undefined" && data.token && data.participant) {
+        localStorage.setItem(`live_quiz_token_${data.session.id}`, data.token);
+        localStorage.setItem(`live_quiz_participant_${data.session.id}`, JSON.stringify(data.participant));
+      }
+
+      router.push(`/live/${data.session.id}`);
+    } catch (err) {
+      console.error(err);
+      setErrorMessage("Network error. Please check your connection.");
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     async function loadQuizInfo() {
@@ -172,6 +224,41 @@ export default function LandingPage() {
             </ul>
           </div>
 
+          {/* Quiz Mode Selector */}
+          <div className="flex p-1 bg-slate-800/80 rounded-2xl mb-8 border border-slate-700/60">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveMode("standard");
+                setErrorMessage(null);
+              }}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeMode === "standard"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              <span>Standard Quiz</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveMode("live");
+                setErrorMessage(null);
+              }}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeMode === "live"
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Radio className="w-4 h-4 animate-pulse text-emerald-300" />
+              <span>Live Presentation Quiz</span>
+            </button>
+          </div>
+
           {/* Error Message */}
           {errorMessage && (
             <motion.div
@@ -184,8 +271,70 @@ export default function LandingPage() {
             </motion.div>
           )}
 
-          {/* Participant Form */}
-          <form onSubmit={handleStartQuiz} className="space-y-4">
+          {/* Form depending on Active Mode */}
+          {activeMode === "live" ? (
+            <form onSubmit={handleJoinLive} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="joinCode"
+                  className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2"
+                >
+                  Enter 6-Character Join Code:
+                </label>
+                <input
+                  id="joinCode"
+                  type="text"
+                  disabled={loading}
+                  value={liveCode}
+                  onChange={(e) => setLiveCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. ABC123"
+                  className="w-full px-4 py-3.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 font-mono tracking-widest text-lg text-center uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all disabled:opacity-50"
+                  maxLength={6}
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="liveParticipantName"
+                  className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2"
+                >
+                  Your Name:
+                </label>
+                <input
+                  id="liveParticipantName"
+                  type="text"
+                  autoComplete="name"
+                  disabled={loading}
+                  value={participantName}
+                  onChange={(e) => setParticipantName(e.target.value)}
+                  placeholder="e.g. Alex Morgan"
+                  className="w-full px-4 py-3.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all disabled:opacity-50"
+                  maxLength={50}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 text-base disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Connecting to Live Presentation...</span>
+                  </>
+                ) : (
+                  <>
+                    <Radio className="w-5 h-5 animate-pulse" />
+                    <span>Join Live Quiz Session</span>
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleStartQuiz} className="space-y-4">
             <div>
               <label
                 htmlFor="participantName"
@@ -227,6 +376,7 @@ export default function LandingPage() {
               )}
             </button>
           </form>
+          )}
 
           {/* Bottom helper */}
           <div className="mt-6 flex items-center justify-between text-xs text-slate-500">
