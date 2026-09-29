@@ -723,17 +723,6 @@ export default function AdminLivePresentationScreen() {
               Introduce this question to your audience. When ready, click below to initiate the authoritative 30-second live timer!
             </p>
 
-            {/* Admin Peek at correct answer */}
-            {state?.question?.correctOption && (
-              <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-800/40 text-left max-w-xl mx-auto text-xs text-indigo-300">
-                <span className="font-bold block mb-1">Presenter Key:</span>
-                Option {state.question.correctOption} is correct.
-                {state.question.explanation && (
-                  <p className="text-slate-400 mt-1 italic">{state.question.explanation}</p>
-                )}
-              </div>
-            )}
-
             <div className="pt-4">
               <button
                 onClick={() => handleTransition("QUESTION_ACTIVE")}

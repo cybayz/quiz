@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Ensure Admin User
     const adminEmail = (process.env.ADMIN_EMAIL || "admin@quizapp.com").trim().toLowerCase();
-    const adminPassword = process.env.ADMIN_PASSWORD || "Admin@QuizMaster2026!";
+    const adminPassword = process.env.ADMIN_PASSWORD || "Admin@!";
     const passwordHash = await bcrypt.hash(adminPassword, 10);
 
     await prisma.adminUser.upsert({

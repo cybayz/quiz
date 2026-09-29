@@ -56,9 +56,9 @@ export async function GET(
             optionB: true,
             optionC: true,
             optionD: true,
-            // Expose correctOption & explanation only on LEADERBOARD or if admin requested
-            correctOption: session.status === "LEADERBOARD" || searchParams.get("admin") === "true",
-            explanation: session.status === "LEADERBOARD" || searchParams.get("admin") === "true",
+            // Expose correctOption & explanation ONLY on LEADERBOARD (after answering is closed)
+            correctOption: session.status === "LEADERBOARD",
+            explanation: session.status === "LEADERBOARD",
           },
         });
         baseResponse.question = question;
