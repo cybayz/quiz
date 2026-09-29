@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?  @default("Administrator")
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin_users")
+}
+
+model Question {
+  id            String       @id @default(cuid())
+  questionText  String       @db.Text
+  optionA       String       @db.Text
+  optionB       String       @db.Text
+  optionC       String       @db.Text
+  optionD       String       @db.Text
+  correctOption String       // 'A', 'B', 'C', or 'D'
+  explanation   String?      @db.Text
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  answers       QuizAnswer[]
+
+  @@index([isActive])
+  @@map("questions")
+}
+
+model QuizAttempt {
+  id                       String       @id @default(cuid())
+  participantName          String
+  startedAt                DateTime     @default(now())
+  completedAt              DateTime?
+  totalScore               Int          @default(0)
+  maxScore                 Int          @default(0)
+  percentage               Float        @default(0)
+  totalTime                Int          @default(0) // total time in seconds
+  correctCount             Int          @default(0)
+  wrongCount               Int          @default(0)
+  status                   String       @default("IN_PROGRESS") // "IN_PROGRESS", "COMPLETED"
+  certificateId            String?      @unique
+  questionOrder            String       @db.Text // JSON array string of question IDs: ["q1", "q2", ...]
+  currentQuestionIndex     Int          @default(0)
+  currentQuestionStartedAt DateTime     @default(now())
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+  answers                  QuizAnswer[]
+
+  @@index([status, totalScore, totalTime])
+  @@map("quiz_attempts")
+}
+
+model QuizAnswer {
+  id               String      @id @default(cuid())
+  attemptId        String
+  attempt          QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId       String
+  question         Question    @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  questionSnapshot String      @db.Text // Snapshot of question, options, correct answer at answer time
+  selectedOption   String      // 'A', 'B', 'C', or 'D'
+  correctOption    String      // 'A', 'B', 'C', or 'D'
+  isCorrect        Boolean
+  pointsAwarded    Int
+  timeTaken        Float       // seconds
+  startedAt        DateTime
+  answeredAt       DateTime    @default(now())
+  createdAt        DateTime    @default(now())
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@map("quiz_answers")
+}
+
+model QuizSettings {
+  id                     String   @id @default("default-settings")
+  quizTitle              String   @default("NextGen Knowledge Challenge")
+  quizDescription        String   @db.Text @default("Test your knowledge and response speed in this interactive live quiz. Beat the clock, score high, and earn your certificate!")
+  basePoints             Int      @default(100)
+  gracePeriodSeconds     Int      @default(5)
+  pointsPerSecond        Int      @default(1)
+  minimumCorrectPoints   Int      @default(0)
+  negativeMarkingEnabled Boolean  @default(false)
+  negativePoints         Int      @default(10)
+  allowNegativeTotal     Boolean  @default(false)
+  quizEnabled            Boolean  @default(true)
+  updatedAt              DateTime @updatedAt
+
+  @@map("quiz_settings")
+}
