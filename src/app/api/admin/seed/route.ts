@@ -1,9 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { getAdminSession } from "@/lib/auth";
 
-const prisma = new PrismaClient();
+export const dynamic = "force-dynamic";
 
-// Official questions derived directly from the attached Burkina Faso PMCED 2023 Country Report
 const burkinaFasoReportQuestions = [
   {
     questionText: "Quel est l'intitulé officiel du rapport pays présenté par le Burkina Faso en juin 2024 ?",
@@ -115,101 +116,102 @@ const burkinaFasoReportQuestions = [
   }
 ];
 
-async function main() {
-  console.log("🌱 Starting database seeding...");
+export async function POST(request: NextRequest) {
+  try {
+    const admin = await getAdminSession();
+    const { searchParams } = new URL(request.url);
+    const key = searchParams.get("key");
+    const isAuthorized = admin || (key && key === (process.env.AUTH_SECRET || "fallback-secret-minimum-32-characters-very-secure!"));
 
-  // 1. Seed or update Quiz Settings tailored to Burkina Faso PMCED Report
-  const settings = await prisma.quizSettings.upsert({
-    where: { id: "default-settings" },
-    update: {
-      quizTitle: "Burkina Faso - Évaluation PMCED 2023",
-      quizDescription: "Testez vos connaissances sur le rapport pays de suivi du Partenariat mondial pour une coopération efficace au service du développement (PMCED - Burkina Faso 2023).",
-      basePoints: 100,
-      gracePeriodSeconds: 5,
-      pointsPerSecond: 1,
-      quizEnabled: true,
-    },
-    create: {
-      id: "default-settings",
-      quizTitle: "Burkina Faso - Évaluation PMCED 2023",
-      quizDescription: "Testez vos connaissances sur le rapport pays de suivi du Partenariat mondial pour une coopération efficace au service du développement (PMCED - Burkina Faso 2023).",
-      basePoints: 100,
-      gracePeriodSeconds: 5,
-      pointsPerSecond: 1,
-      minimumCorrectPoints: 0,
-      negativeMarkingEnabled: false,
-      negativePoints: 10,
-      allowNegativeTotal: false,
-      quizEnabled: true
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-  });
-  console.log(`✅ Quiz Settings initialized: "${settings.quizTitle}"`);
 
-  // 2. Seed Admin User
-  const adminEmail = (process.env.ADMIN_EMAIL || "admin@quizapp.com").trim().toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD || "Admin@QuizMaster2026!";
-  const passwordHash = await bcrypt.hash(adminPassword, 10);
-
-  const admin = await prisma.adminUser.upsert({
-    where: { email: adminEmail },
-    update: {
-      passwordHash: passwordHash
-    },
-    create: {
-      email: adminEmail,
-      name: "Platform Administrator",
-      passwordHash: passwordHash
-    }
-  });
-  console.log(`✅ Admin account created/updated: ${admin.email}`);
-
-  // 3. Seed / Update Questions from the Official Burkina Faso Report
-  console.log("Seeding questions from the official Burkina Faso PMCED 2023 report...");
-  let count = 0;
-  for (const q of burkinaFasoReportQuestions) {
-    const existing = await prisma.question.findFirst({
-      where: { questionText: q.questionText }
+    // 1. Ensure Quiz Settings
+    await prisma.quizSettings.upsert({
+      where: { id: "default-settings" },
+      update: {
+        quizTitle: "Burkina Faso - Évaluation PMCED 2023",
+        quizDescription: "Testez vos connaissances sur le rapport pays de suivi du Partenariat mondial pour une coopération efficace au service du développement (PMCED - Burkina Faso 2023).",
+        basePoints: 100,
+        gracePeriodSeconds: 5,
+        pointsPerSecond: 1,
+        quizEnabled: true,
+      },
+      create: {
+        id: "default-settings",
+        quizTitle: "Burkina Faso - Évaluation PMCED 2023",
+        quizDescription: "Testez vos connaissances sur le rapport pays de suivi du Partenariat mondial pour une coopération efficace au service du développement (PMCED - Burkina Faso 2023).",
+        basePoints: 100,
+        gracePeriodSeconds: 5,
+        pointsPerSecond: 1,
+        minimumCorrectPoints: 0,
+        negativeMarkingEnabled: false,
+        negativePoints: 10,
+        allowNegativeTotal: false,
+        quizEnabled: true,
+      },
     });
 
-    if (existing) {
-      await prisma.question.update({
-        where: { id: existing.id },
-        data: {
-          optionA: q.optionA,
-          optionB: q.optionB,
-          optionC: q.optionC,
-          optionD: q.optionD,
-          correctOption: q.correctOption,
-          explanation: q.explanation,
-          isActive: true
-        }
+    // 2. Ensure Admin User
+    const adminEmail = (process.env.ADMIN_EMAIL || "admin@quizapp.com").trim().toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || "Admin@QuizMaster2026!";
+    const passwordHash = await bcrypt.hash(adminPassword, 10);
+
+    await prisma.adminUser.upsert({
+      where: { email: adminEmail },
+      update: { passwordHash },
+      create: {
+        email: adminEmail,
+        name: "Platform Administrator",
+        passwordHash,
+      },
+    });
+
+    // 3. Upsert Questions
+    let count = 0;
+    for (const q of burkinaFasoReportQuestions) {
+      const existing = await prisma.question.findFirst({
+        where: { questionText: q.questionText },
       });
-    } else {
-      await prisma.question.create({
-        data: {
-          questionText: q.questionText,
-          optionA: q.optionA,
-          optionB: q.optionB,
-          optionC: q.optionC,
-          optionD: q.optionD,
-          correctOption: q.correctOption,
-          explanation: q.explanation,
-          isActive: true
-        }
-      });
+
+      if (existing) {
+        await prisma.question.update({
+          where: { id: existing.id },
+          data: {
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD,
+            correctOption: q.correctOption,
+            explanation: q.explanation,
+            isActive: true,
+          },
+        });
+      } else {
+        await prisma.question.create({
+          data: {
+            questionText: q.questionText,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD,
+            correctOption: q.correctOption,
+            explanation: q.explanation,
+            isActive: true,
+          },
+        });
+      }
+      count++;
     }
-    count++;
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully seeded ${count} official questions from the Burkina Faso PMCED 2023 report.`,
+      seededCount: count,
+    });
+  } catch (error) {
+    console.error("Seeding API error:", error);
+    return NextResponse.json({ error: "Failed to seed questions." }, { status: 500 });
   }
-  console.log(`✅ Successfully seeded/updated ${count} questions from the Burkina Faso PMCED 2023 report.`);
-
-  console.log("🎉 Seeding completed successfully!");
 }
-
-main()
-  .catch((e) => {
-    console.error("❌ Seeding error:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
