@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Timer,
@@ -58,9 +58,10 @@ interface ReviewItem {
   wasAnswered: boolean;
 }
 
-export default function ParticipantLiveRoomPage() {
+function LiveRoomInner() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const sessionId = params?.sessionId as string;
 
   const [loading, setLoading] = useState(true);
@@ -70,6 +71,11 @@ export default function ParticipantLiveRoomPage() {
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [participantName, setParticipantName] = useState<string>("");
   const [sessionCode, setSessionCode] = useState<string>("");
+
+  // Inline Join state (if participant opens URL directly or storage is empty)
+  const [inlineName, setInlineName] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   // Live session state
   const [status, setStatus] = useState<
@@ -105,24 +111,49 @@ export default function ParticipantLiveRoomPage() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showCertModal, setShowCertModal] = useState(false);
 
-  // Reconnection & token recovery from localStorage
+  // Reconnection & token recovery from searchParams, sessionStorage, or localStorage
   useEffect(() => {
-    // Find matching session tokens in localStorage
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith("live_pid_")) {
-        const code = key.replace("live_pid_", "");
-        const pid = localStorage.getItem(key);
-        const name = localStorage.getItem(`live_name_${code}`);
-        if (pid) {
-          setParticipantId(pid);
-          if (name) setParticipantName(name);
-          setSessionCode(code);
-          break;
+    const queryPid = searchParams?.get("participantId");
+    if (queryPid) {
+      setParticipantId(queryPid);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(`live_participant_${sessionId}`, queryPid);
+        localStorage.setItem(`live_participant_${sessionId}`, queryPid);
+      }
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      const storedPid =
+        sessionStorage.getItem(`live_participant_${sessionId}`) ||
+        localStorage.getItem(`live_participant_${sessionId}`);
+      const storedPname =
+        sessionStorage.getItem(`live_pname_${sessionId}`) ||
+        localStorage.getItem(`live_pname_${sessionId}`);
+
+      if (storedPid) {
+        setParticipantId(storedPid);
+        if (storedPname) setParticipantName(storedPname);
+        return;
+      }
+
+      // Fallback: check matching live_pid_ in localStorage
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("live_pid_")) {
+          const code = key.replace("live_pid_", "");
+          const pid = localStorage.getItem(key);
+          const name = localStorage.getItem(`live_name_${code}`);
+          if (pid) {
+            setParticipantId(pid);
+            if (name) setParticipantName(name);
+            setSessionCode(code);
+            break;
+          }
         }
       }
     }
-  }, []);
+  }, [searchParams, sessionId]);
 
   // Fetch Full State from Server
   const fetchState = useCallback(async () => {
@@ -147,6 +178,13 @@ export default function ParticipantLiveRoomPage() {
 
       if (data.participant) {
         setParticipantName(data.participant.name);
+      } else if (participantId) {
+        // Stale participant ID from another quiz session, clear it
+        setParticipantId(null);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(`live_participant_${sessionId}`);
+          sessionStorage.removeItem(`live_participant_${sessionId}`);
+        }
       }
 
       if (data.question) {
@@ -294,21 +332,66 @@ export default function ParticipantLiveRoomPage() {
     return () => clearInterval(timer);
   }, [status, questionStartedAt]);
 
+  const handleInlineJoin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inlineName.trim()) return;
+    setIsJoining(true);
+    setJoinError(null);
+    try {
+      const res = await fetch("/api/live/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          sessionCode: sessionCode || undefined,
+          participantName: inlineName.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setJoinError(data.error || "Failed to join quiz room.");
+        return;
+      }
+
+      if (data.participant?.id) {
+        setParticipantId(data.participant.id);
+        setParticipantName(data.participant.name);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`live_participant_${sessionId}`, data.participant.id);
+          sessionStorage.setItem(`live_participant_${sessionId}`, data.participant.id);
+          localStorage.setItem(`live_pname_${sessionId}`, data.participant.name);
+          sessionStorage.setItem(`live_pname_${sessionId}`, data.participant.name);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setJoinError("Network error. Please try again.");
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
   // Submit Answer handler
   const handleSelectOption = async (optionKey: "A" | "B" | "C" | "D") => {
+    if (!participantId) {
+      setError("Please join the quiz room with your name first.");
+      return;
+    }
+
     if (
       status !== "QUESTION_ACTIVE" ||
       hasAnswered ||
       isSubmitting ||
       remainingSeconds <= 0 ||
-      !question ||
-      !participantId
+      !question
     ) {
       return;
     }
 
     setSelectedOption(optionKey);
     setIsSubmitting(true);
+    setError(null);
 
     try {
       const res = await fetch(`/api/live/${sessionId}/answer`, {
@@ -325,7 +408,7 @@ export default function ParticipantLiveRoomPage() {
 
       if (res.ok) {
         setHasAnswered(true);
-        fireSuccessConfetti();
+        // Answer submitted. Confetti is reserved for official leaderboard reveals or final completion.
       } else {
         if (data.hasAnswered) {
           setHasAnswered(true);
@@ -346,6 +429,76 @@ export default function ParticipantLiveRoomPage() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-4">
         <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
         <p className="text-slate-400 text-sm">Connecting to Live Quiz Room...</p>
+      </div>
+    );
+  }
+
+  // Fallback: If participant has not joined with a name yet
+  if (!participantId) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-md mx-auto w-full">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-center space-y-6"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto text-indigo-400 shadow-lg shadow-indigo-500/20">
+            <Users className="w-8 h-8" />
+          </div>
+
+          <div>
+            <h1 className="text-2xl font-black text-white">Join Live Quiz</h1>
+            <p className="text-indigo-400 font-semibold text-sm mt-1">{quizTitle}</p>
+            {sessionCode && (
+              <span className="inline-block mt-2 font-mono text-xs px-2.5 py-1 bg-slate-800 rounded-lg text-slate-300">
+                Session Code: <strong className="text-indigo-300">{sessionCode}</strong>
+              </span>
+            )}
+          </div>
+
+          <form onSubmit={handleInlineJoin} className="space-y-4 text-left">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Enter your name to participate:
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={40}
+                value={inlineName}
+                onChange={(e) => setInlineName(e.target.value)}
+                placeholder="e.g. Dr. Priya Sharma"
+                className="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm transition-all"
+                autoFocus
+              />
+            </div>
+
+            {joinError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{joinError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isJoining || !inlineName.trim()}
+              className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-indigo-500/25 active:scale-[0.99]"
+            >
+              {isJoining ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Joining Session...</span>
+                </>
+              ) : (
+                <>
+                  <span>Join Quiz Room</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+        </motion.div>
       </div>
     );
   }
@@ -868,4 +1021,19 @@ export default function ParticipantLiveRoomPage() {
   }
 
   return null;
+}
+
+export default function ParticipantLiveRoomPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-4">
+          <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
+          <p className="text-slate-400 text-sm">Connecting to Live Quiz Room...</p>
+        </div>
+      }
+    >
+      <LiveRoomInner />
+    </Suspense>
+  );
 }

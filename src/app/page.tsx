@@ -72,13 +72,17 @@ export default function LandingPage() {
         return;
       }
 
-      // Store reconnection token in localStorage
-      if (typeof window !== "undefined" && data.token && data.participant) {
-        localStorage.setItem(`live_quiz_token_${data.session.id}`, data.token);
+      // Store reconnection token and participant ID
+      if (typeof window !== "undefined" && data.participant) {
+        localStorage.setItem(`live_quiz_token_${data.session.id}`, data.token || "");
         localStorage.setItem(`live_quiz_participant_${data.session.id}`, JSON.stringify(data.participant));
+        localStorage.setItem(`live_participant_${data.session.id}`, data.participant.id);
+        localStorage.setItem(`live_pname_${data.session.id}`, data.participant.name);
+        sessionStorage.setItem(`live_participant_${data.session.id}`, data.participant.id);
+        sessionStorage.setItem(`live_pname_${data.session.id}`, data.participant.name);
       }
 
-      router.push(`/live/${data.session.id}`);
+      router.push(`/live/${data.session.id}?participantId=${data.participant.id}`);
     } catch (err) {
       console.error(err);
       setErrorMessage("Network error. Please check your connection.");

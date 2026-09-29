@@ -8,16 +8,24 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const sessionCode = body.sessionCode?.trim().toUpperCase();
+    const sessionId = body.sessionId?.trim();
     const participantName = body.participantName?.trim();
     const existingToken = body.participantToken?.trim();
 
-    if (!sessionCode) {
-      return NextResponse.json({ error: "Session code is required." }, { status: 400 });
+    if (!sessionCode && !sessionId) {
+      return NextResponse.json({ error: "Session code or session ID is required." }, { status: 400 });
     }
 
-    const session = await prisma.liveQuizSession.findUnique({
-      where: { sessionCode },
-    });
+    let session = null;
+    if (sessionId) {
+      session = await prisma.liveQuizSession.findUnique({
+        where: { id: sessionId },
+      });
+    } else if (sessionCode) {
+      session = await prisma.liveQuizSession.findUnique({
+        where: { sessionCode },
+      });
+    }
 
     if (!session) {
       return NextResponse.json({ error: "Quiz session not found. Please check your join code." }, { status: 404 });

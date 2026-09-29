@@ -33,8 +33,10 @@ export default function ParticipantJoinPage() {
           });
           if (res.ok) {
             const data = await res.json();
-            if (data.success && data.sessionId) {
-              router.push(`/live/${data.sessionId}`);
+            if (data.success && data.sessionId && data.participant?.id) {
+              localStorage.setItem(`live_participant_${data.sessionId}`, data.participant.id);
+              sessionStorage.setItem(`live_participant_${data.sessionId}`, data.participant.id);
+              router.push(`/live/${data.sessionId}?participantId=${data.participant.id}`);
               return;
             }
           }
@@ -80,14 +82,18 @@ export default function ParticipantJoinPage() {
         return;
       }
 
-      // Save token in localStorage for seamless reconnection on page refresh
-      if (data.participant?.token) {
-        localStorage.setItem(`live_token_${sessionCode}`, data.participant.token);
+      // Save token in localStorage and sessionStorage for seamless reconnection
+      if (data.participant?.id) {
+        localStorage.setItem(`live_token_${sessionCode}`, data.participant.token || "");
         localStorage.setItem(`live_name_${sessionCode}`, data.participant.name);
         localStorage.setItem(`live_pid_${sessionCode}`, data.participant.id);
+        localStorage.setItem(`live_participant_${data.sessionId}`, data.participant.id);
+        localStorage.setItem(`live_pname_${data.sessionId}`, data.participant.name);
+        sessionStorage.setItem(`live_participant_${data.sessionId}`, data.participant.id);
+        sessionStorage.setItem(`live_pname_${data.sessionId}`, data.participant.name);
       }
 
-      router.push(`/live/${data.sessionId}`);
+      router.push(`/live/${data.sessionId}?participantId=${data.participant.id}`);
     } catch (err) {
       console.error(err);
       setError("Network connection issue. Please check your internet and retry.");
