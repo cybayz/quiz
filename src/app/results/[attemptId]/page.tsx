@@ -60,7 +60,7 @@ export default function ResultsPage() {
           return;
         }
 
-        const settingsRes = await fetch("/api/admin/settings");
+        const settingsRes = await fetch("/api/quiz/settings");
         let quizTitle = "NextGen Knowledge Challenge";
         if (settingsRes.ok) {
           const s = await settingsRes.json();

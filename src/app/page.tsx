@@ -37,7 +37,7 @@ export default function LandingPage() {
   useEffect(() => {
     async function loadQuizInfo() {
       try {
-        const res = await fetch("/api/admin/settings");
+        const res = await fetch("/api/quiz/settings");
         if (res.ok) {
           const data = await res.json();
           setSettings(data.settings);
