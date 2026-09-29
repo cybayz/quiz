@@ -43,26 +43,45 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const questionCountRequested = Math.max(1, Math.min(50, Number(body.questionCount) || 10));
+    const questionSet = body.questionSet === "SAMPLE" ? "SAMPLE" : "MAIN";
 
-    // Fetch active questions
+    const settings = await prisma.quizSettings.findUnique({
+      where: { id: "default-settings" },
+    });
+
+    const timePerQuestion = Math.max(
+      5,
+      Math.min(300, Number(body.timePerQuestion) || settings?.defaultQuestionTimer || 30)
+    );
+
+    // Fetch active questions for the chosen question set
     const activeQuestions = await prisma.question.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        ...(questionSet === "SAMPLE"
+          ? { category: "SAMPLE" }
+          : { OR: [{ category: "MAIN" }, { category: null }] }),
+      },
       orderBy: { createdAt: "asc" }, // deterministic order for live presentation
       take: questionCountRequested,
     });
 
     if (activeQuestions.length === 0) {
       return NextResponse.json(
-        { error: "No active questions available in the question bank." },
+        {
+          error: `No active questions found in the ${
+            questionSet === "SAMPLE" ? "Sample / Practice" : "Main Exam"
+          } question set.`,
+        },
         { status: 400 }
       );
     }
 
-    const settings = await prisma.quizSettings.findUnique({
-      where: { id: "default-settings" },
-    });
-
-    const quizTitle = body.quizTitle?.trim() || settings?.quizTitle || "Live Presentation Quiz";
+    const defaultTitle =
+      questionSet === "SAMPLE"
+        ? "Sample Practice Quiz (Demo & Pre-Test)"
+        : settings?.quizTitle || "Live Presentation Quiz";
+    const quizTitle = body.quizTitle?.trim() || defaultTitle;
     const questionIds = activeQuestions.map((q) => q.id);
 
     // Generate unique session code
@@ -84,6 +103,8 @@ export async function POST(request: NextRequest) {
         status: "WAITING",
         questionOrder: JSON.stringify(questionIds),
         currentQuestionIndex: 0,
+        timePerQuestion,
+        questionSet,
         createdById: admin.adminId,
         stateVersion: 1,
       },
@@ -98,6 +119,8 @@ export async function POST(request: NextRequest) {
           quizTitle: session.quizTitle,
           status: session.status,
           totalQuestions: questionIds.length,
+          timePerQuestion: session.timePerQuestion,
+          questionSet: session.questionSet,
           createdAt: session.createdAt,
         },
       },

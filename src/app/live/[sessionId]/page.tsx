@@ -91,6 +91,7 @@ function LiveRoomInner() {
   const [question, setQuestion] = useState<QuestionData | null>(null);
   const [questionStartedAt, setQuestionStartedAt] = useState<Date | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(30);
+  const [timePerQuestion, setTimePerQuestion] = useState(30);
 
   // Answering state
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -191,14 +192,19 @@ function LiveRoomInner() {
         setQuestion(data.question);
       }
 
+      if (data.timePerQuestion) {
+        setTimePerQuestion(data.timePerQuestion);
+      }
+      const duration = data.timePerQuestion || timePerQuestion || 30;
+
       if (data.questionStartedAt) {
         const startTime = new Date(data.questionStartedAt);
         setQuestionStartedAt(startTime);
         const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000);
-        setRemainingSeconds(Math.max(0, 30 - elapsed));
+        setRemainingSeconds(Math.max(0, duration - elapsed));
       } else {
         setQuestionStartedAt(null);
-        setRemainingSeconds(30);
+        setRemainingSeconds(duration);
       }
 
       // Check answer status
@@ -319,18 +325,18 @@ function LiveRoomInner() {
     };
   }, [sessionId, stateVersion, fetchState]);
 
-  // 30-Second countdown timer running off server timestamp
+  // Synchronized countdown timer running off server timestamp
   useEffect(() => {
     if (status !== "QUESTION_ACTIVE" || !questionStartedAt) return;
 
     const timer = setInterval(() => {
       const elapsed = Math.floor((Date.now() - questionStartedAt.getTime()) / 1000);
-      const remaining = Math.max(0, 30 - elapsed);
+      const remaining = Math.max(0, timePerQuestion - elapsed);
       setRemainingSeconds(remaining);
     }, 100);
 
     return () => clearInterval(timer);
-  }, [status, questionStartedAt]);
+  }, [status, questionStartedAt, timePerQuestion]);
 
   const handleInlineJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -618,9 +624,9 @@ function LiveRoomInner() {
     ];
 
     let timerColorClass = "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
-    if (remainingSeconds <= 10) {
+    if (remainingSeconds <= Math.max(5, Math.floor(timePerQuestion * 0.3))) {
       timerColorClass = "text-rose-400 bg-rose-500/10 border-rose-500/30 animate-pulse";
-    } else if (remainingSeconds <= 20) {
+    } else if (remainingSeconds <= Math.floor(timePerQuestion * 0.6)) {
       timerColorClass = "text-amber-400 bg-amber-500/10 border-amber-500/30";
     }
 

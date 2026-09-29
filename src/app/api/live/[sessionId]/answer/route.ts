@@ -80,13 +80,14 @@ export async function POST(
       );
     }
 
-    // 4. Server-Side 30-Second Timer Check
+    // 4. Server-Side Timer Check
     const now = new Date();
     const elapsedMs = now.getTime() - new Date(session.questionStartedAt).getTime();
     const timeTakenSeconds = Math.max(0.1, elapsedMs / 1000);
 
-    // 30 seconds limit + 0.5s grace for network transit
-    if (timeTakenSeconds > 30.5) {
+    const timeLimit = session.timePerQuestion || 30;
+    // timeLimit seconds limit + 0.5s grace for network transit
+    if (timeTakenSeconds > timeLimit + 0.5) {
       return NextResponse.json(
         { error: "Time is up! Answers can no longer be submitted for this question." },
         { status: 400 }

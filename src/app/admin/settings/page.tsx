@@ -25,6 +25,7 @@ interface SettingsForm {
   negativePoints: number;
   allowNegativeTotal: boolean;
   quizEnabled: boolean;
+  defaultQuestionTimer: number;
 }
 
 export default function AdminSettingsPage() {
@@ -39,6 +40,7 @@ export default function AdminSettingsPage() {
     negativePoints: 10,
     allowNegativeTotal: false,
     quizEnabled: true,
+    defaultQuestionTimer: 30,
   });
 
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,7 @@ export default function AdminSettingsPage() {
             negativePoints: data.settings.negativePoints,
             allowNegativeTotal: data.settings.allowNegativeTotal,
             quizEnabled: data.settings.quizEnabled,
+            defaultQuestionTimer: data.settings.defaultQuestionTimer || 30,
           });
         }
       } catch (err) {
@@ -293,6 +296,31 @@ export default function AdminSettingsPage() {
               <span className="text-[11px] text-slate-500 mt-1 block">
                 Lowest points a correct answer can earn (Default: 0)
               </span>
+            </div>
+
+            <div className="sm:col-span-2 p-4 rounded-2xl bg-indigo-950/20 border border-indigo-900/30">
+              <label className="block text-indigo-300 font-bold mb-1">
+                Live Quiz Question Countdown Timer (Seconds):
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min={5}
+                  max={300}
+                  required
+                  value={formData.defaultQuestionTimer}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      defaultQuestionTimer: parseInt(e.target.value, 10) || 30,
+                    })
+                  }
+                  className="w-32 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <span className="text-xs text-slate-300">
+                  Authoritative live timer per question (Current standard: 30 seconds. Configurable between 5s and 300s).
+                </span>
+              </div>
             </div>
           </div>
         </div>

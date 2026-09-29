@@ -37,6 +37,8 @@ export async function GET(
       currentQuestionIndex: currentQIndex,
       currentQuestionNumber: currentQIndex + 1,
       totalQuestions,
+      timePerQuestion: session.timePerQuestion || 30,
+      questionSet: session.questionSet || "MAIN",
       questionStartedAt: session.questionStartedAt,
       questionEndsAt: session.questionEndsAt,
       stateVersion: session.stateVersion,

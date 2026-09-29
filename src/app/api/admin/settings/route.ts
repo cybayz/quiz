@@ -54,6 +54,7 @@ export async function PUT(request: NextRequest) {
         negativePoints: data.negativePoints,
         allowNegativeTotal: data.allowNegativeTotal,
         quizEnabled: data.quizEnabled,
+        defaultQuestionTimer: data.defaultQuestionTimer,
       },
       create: {
         id: "default-settings",
@@ -67,6 +68,7 @@ export async function PUT(request: NextRequest) {
         negativePoints: data.negativePoints,
         allowNegativeTotal: data.allowNegativeTotal,
         quizEnabled: data.quizEnabled,
+        defaultQuestionTimer: data.defaultQuestionTimer,
       },
     });
 

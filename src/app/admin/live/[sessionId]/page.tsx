@@ -76,6 +76,8 @@ interface LiveSessionState {
   questionEndsAt: string | null;
   stateVersion: number;
   participantsCount: number;
+  timePerQuestion?: number;
+  questionSet?: string;
   participants?: ParticipantItem[];
   question?: QuestionData;
   answeredCount?: number;
@@ -268,9 +270,9 @@ export default function AdminLivePresentationScreen() {
         if (timerRef.current) clearInterval(timerRef.current);
       };
     } else {
-      setRemainingSeconds(30);
+      setRemainingSeconds(state?.timePerQuestion || 30);
     }
-  }, [state?.status, state?.questionEndsAt]);
+  }, [state?.status, state?.questionEndsAt, state?.timePerQuestion]);
 
   // Trigger celebration confetti on COMPLETED
   useEffect(() => {
@@ -720,7 +722,7 @@ export default function AdminLivePresentationScreen() {
             </h1>
 
             <p className="text-slate-400 text-base sm:text-lg">
-              Introduce this question to your audience. When ready, click below to initiate the authoritative 30-second live timer!
+              Introduce this question to your audience. When ready, click below to initiate the authoritative {state?.timePerQuestion || 30}-second live timer!
             </p>
 
             <div className="pt-4">
@@ -734,7 +736,7 @@ export default function AdminLivePresentationScreen() {
                 ) : (
                   <>
                     <Timer className="w-6 h-6" />
-                    <span>Launch 30s Countdown</span>
+                    <span>Launch {state?.timePerQuestion || 30}s Countdown</span>
                   </>
                 )}
               </button>

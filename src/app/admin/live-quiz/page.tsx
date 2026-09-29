@@ -27,6 +27,8 @@ interface LiveSessionItem {
   quizTitle: string;
   status: string;
   currentQuestionIndex: number;
+  timePerQuestion?: number;
+  questionSet?: string;
   createdAt: string;
   completedAt: string | null;
   _count: {
@@ -41,11 +43,27 @@ export default function AdminLiveQuizManagementPage() {
   const [loading, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [totalQuestionsInBank, setTotalQuestionsInBank] = useState(10);
+
+  // Question counts in bank
+  const [mainCountInBank, setMainCountInBank] = useState(10);
+  const [sampleCountInBank, setSampleCountInBank] = useState(5);
 
   // Form State
-  const [quizTitle, setQuizTitle] = useState("Interactive Live Knowledge Challenge");
+  const [questionSet, setQuestionSet] = useState<"MAIN" | "SAMPLE">("MAIN");
+  const [quizTitle, setQuizTitle] = useState("Basilar Membrane Mechanics & Nonlinearity");
   const [questionCount, setQuestionCount] = useState(10);
+  const [timePerQuestion, setTimePerQuestion] = useState(30);
+
+  const handleSetChange = (newSet: "MAIN" | "SAMPLE") => {
+    setQuestionSet(newSet);
+    if (newSet === "SAMPLE") {
+      setQuizTitle("Sample Practice Quiz (Demo & Pre-Test)");
+      setQuestionCount(Math.min(sampleCountInBank, 5));
+    } else {
+      setQuizTitle("Basilar Membrane Mechanics & Nonlinearity");
+      setQuestionCount(Math.min(mainCountInBank, 10));
+    }
+  };
 
   const loadSessions = async () => {
     try {
@@ -56,13 +74,32 @@ export default function AdminLiveQuizManagementPage() {
         setSessions(data.sessions || []);
       }
 
-      // Check available questions count
+      // Check available questions count by category
       const qRes = await fetch("/api/admin/questions");
       if (qRes.ok) {
         const qData = await qRes.json();
-        const activeCount = (qData.questions || []).filter((q: any) => q.isActive).length;
-        setTotalQuestionsInBank(activeCount || 10);
-        setQuestionCount(Math.min(10, activeCount || 10));
+        const activeMain = (qData.questions || []).filter(
+          (q: any) => q.isActive && q.category !== "SAMPLE"
+        ).length;
+        const activeSample = (qData.questions || []).filter(
+          (q: any) => q.isActive && q.category === "SAMPLE"
+        ).length;
+        setMainCountInBank(activeMain || 10);
+        setSampleCountInBank(activeSample || 5);
+        if (questionSet === "MAIN") {
+          setQuestionCount(Math.min(10, activeMain || 10));
+        } else {
+          setQuestionCount(Math.min(5, activeSample || 5));
+        }
+      }
+
+      // Check default timer from settings
+      const sRes = await fetch("/api/admin/settings");
+      if (sRes.ok) {
+        const sData = await sRes.json();
+        if (sData.settings?.defaultQuestionTimer) {
+          setTimePerQuestion(sData.settings.defaultQuestionTimer);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -86,6 +123,8 @@ export default function AdminLiveQuizManagementPage() {
         body: JSON.stringify({
           quizTitle,
           questionCount,
+          questionSet,
+          timePerQuestion,
         }),
       });
 
@@ -229,7 +268,23 @@ export default function AdminLiveQuizManagementPage() {
                     </td>
 
                     <td className="py-3.5 px-4 font-semibold text-white">
-                      {s.quizTitle}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span>{s.quizTitle}</span>
+                        {s.questionSet === "SAMPLE" ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            Practice Demo
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                            MSc Exam
+                          </span>
+                        )}
+                        {s.timePerQuestion && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                            {s.timePerQuestion}s/Q
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="py-3.5 px-3 text-center">
@@ -306,6 +361,56 @@ export default function AdminLiveQuizManagementPage() {
             </div>
 
             <form onSubmit={handleCreateSession} className="space-y-4 text-xs sm:text-sm">
+              {/* Question Paper / Set Selection */}
+              <div>
+                <label className="block text-slate-300 font-semibold mb-2">
+                  Select Question Paper / Set:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div
+                    onClick={() => handleSetChange("MAIN")}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                      questionSet === "MAIN"
+                        ? "bg-indigo-600/20 border-indigo-500 text-white ring-2 ring-indigo-500/50"
+                        : "bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-extrabold text-xs sm:text-sm text-indigo-300">
+                        MSc Audiology Exam
+                      </span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300">
+                        {mainCountInBank} Qs
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-snug">
+                      Actual exam on Basilar Membrane Mechanics &amp; Nonlinearity.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => handleSetChange("SAMPLE")}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                      questionSet === "SAMPLE"
+                        ? "bg-amber-600/20 border-amber-500 text-white ring-2 ring-amber-500/50"
+                        : "bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-extrabold text-xs sm:text-sm text-amber-300">
+                        🧪 Sample Practice Test
+                      </span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                        {sampleCountInBank} Qs
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-snug">
+                      Practice/demo questions to test connectivity without leaking real questions!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-slate-300 font-semibold mb-1">
                   Presentation Session Title:
@@ -315,39 +420,83 @@ export default function AdminLiveQuizManagementPage() {
                   required
                   value={quizTitle}
                   onChange={(e) => setQuizTitle(e.target.value)}
-                  placeholder="e.g. Q3 Company Tech Challenge"
+                  placeholder="e.g. Q3 Live Knowledge Challenge"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Number of Questions for Session:
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    min={1}
-                    max={totalQuestionsInBank}
-                    value={questionCount}
-                    onChange={(e) =>
-                      setQuestionCount(
-                        Math.max(1, Math.min(totalQuestionsInBank, parseInt(e.target.value, 10) || 1))
-                      )
-                    }
-                    className="w-24 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <span className="text-xs text-slate-400">
-                    out of {totalQuestionsInBank} active questions in bank
-                  </span>
+              {/* Timer per Question and Question Count */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">
+                    Timer per Question:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={5}
+                      max={300}
+                      required
+                      value={timePerQuestion}
+                      onChange={(e) =>
+                        setTimePerQuestion(
+                          Math.max(5, Math.min(300, parseInt(e.target.value, 10) || 30))
+                        )
+                      }
+                      className="w-24 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <span className="text-xs text-slate-400">seconds</span>
+                  </div>
+                  {/* Quick selection chips */}
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    {[15, 20, 30, 45, 60].map((sec) => (
+                      <button
+                        type="button"
+                        key={sec}
+                        onClick={() => setTimePerQuestion(sec)}
+                        className={`px-2 py-0.5 rounded text-[11px] font-mono cursor-pointer transition-colors ${
+                          timePerQuestion === sec
+                            ? "bg-indigo-600 text-white font-bold"
+                            : "bg-slate-800 hover:bg-slate-700 text-slate-400"
+                        }`}
+                      >
+                        {sec}s
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">
+                    Number of Questions:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={questionSet === "SAMPLE" ? sampleCountInBank : mainCountInBank}
+                      value={questionCount}
+                      onChange={(e) => {
+                        const maxQ =
+                          questionSet === "SAMPLE" ? sampleCountInBank : mainCountInBank;
+                        setQuestionCount(
+                          Math.max(1, Math.min(maxQ, parseInt(e.target.value, 10) || 1))
+                        );
+                      }}
+                      className="w-24 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <span className="text-xs text-slate-400">
+                      out of {questionSet === "SAMPLE" ? sampleCountInBank : mainCountInBank} active
+                    </span>
+                  </div>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-indigo-950/20 border border-indigo-900/30 text-xs text-slate-400 space-y-1">
-                <span className="font-bold text-indigo-300 block">Presentation Rules:</span>
-                <p>&bull; 30 seconds timer per question with server-enforced lock.</p>
-                <p>&bull; All participants receive the exact same questions in the exact same sequence.</p>
-                <p>&bull; Top 10 Leaderboard shown between each question with rank change animations.</p>
+                <span className="font-bold text-indigo-300 block">Session Configuration:</span>
+                <p>&bull; <strong>{timePerQuestion} seconds</strong> countdown per question enforced by server.</p>
+                <p>&bull; Mode: <strong>{questionSet === "SAMPLE" ? "🧪 Sample Practice (Safe for testing)" : "🎓 Official Examination"}</strong></p>
+                <p>&bull; Synchronized real-time leaderboards between questions.</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">

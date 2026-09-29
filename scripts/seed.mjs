@@ -97,6 +97,54 @@ const audiologyQuestions = [
   }
 ];
 
+const sampleQuestions = [
+  {
+    questionText: "Sample Practice: Which part of the human ear converts mechanical vibrations into electrical neural signals?",
+    optionA: "Cochlea",
+    optionB: "Tympanic membrane (eardrum)",
+    optionC: "Eustachian tube",
+    optionD: "Semicircular canals",
+    correctOption: "A",
+    explanation: "The cochlea contains the organ of Corti with specialized sensory hair cells that transduce sound-induced mechanical vibrations into neural signals sent to the brain."
+  },
+  {
+    questionText: "Sample Practice: What physical frequency corresponds to 1 Kilohertz (1 kHz)?",
+    optionA: "10 Hertz",
+    optionB: "100 Hertz",
+    optionC: "1,000 Hertz",
+    optionD: "10,000 Hertz",
+    correctOption: "C",
+    explanation: "The metric prefix 'kilo' denotes 1,000; therefore 1 kHz equals 1,000 cycles (Hertz) per second."
+  },
+  {
+    questionText: "Sample Practice: Which logarithmic unit is commonly used to express sound pressure level (SPL) in acoustics?",
+    optionA: "Hertz (Hz)",
+    optionB: "Decibel (dB)",
+    optionC: "Pascal (Pa)",
+    optionD: "Lumen (lm)",
+    correctOption: "B",
+    explanation: "The Decibel (dB) is the standard logarithmic ratio unit used to measure sound intensity and sound pressure levels relative to a reference threshold (20 micropascals)."
+  },
+  {
+    questionText: "Sample Practice: What is the anatomical name of the outer visible flap of the human ear that funnels sound?",
+    optionA: "Pinna (Auricle)",
+    optionB: "Malleus (Hammer)",
+    optionC: "Incus (Anvil)",
+    optionD: "Stapes (Stirrup)",
+    correctOption: "A",
+    explanation: "The pinna (or auricle) is the visible cartilage structure on the exterior of the head that collects sound waves and channels them into the auditory canal."
+  },
+  {
+    questionText: "Sample Practice: What is the generally accepted average frequency range of normal human hearing?",
+    optionA: "20 Hz to 20,000 Hz",
+    optionB: "200 Hz to 2,000 Hz",
+    optionC: "1,000 Hz to 100,000 Hz",
+    optionD: "1 Hz to 50 Hz",
+    correctOption: "A",
+    explanation: "The typical frequency range of human hearing spans from 20 Hz (deep bass) to 20,000 Hz (high treble) in healthy young adults."
+  }
+];
+
 async function main() {
   console.log("🌱 Starting database seeding...");
 
@@ -110,6 +158,7 @@ async function main() {
       gracePeriodSeconds: 5,
       pointsPerSecond: 1,
       quizEnabled: true,
+      defaultQuestionTimer: 30,
     },
     create: {
       id: "default-settings",
@@ -123,9 +172,10 @@ async function main() {
       negativePoints: 10,
       allowNegativeTotal: false,
       quizEnabled: true,
+      defaultQuestionTimer: 30,
     }
   });
-  console.log(`✅ Quiz Settings initialized: "${settings.quizTitle}"`);
+  console.log(`✅ Quiz Settings initialized: "${settings.quizTitle}" (Default Timer: ${settings.defaultQuestionTimer || 30}s)`);
 
   // 2. Seed Admin User
   const adminEmail = (process.env.ADMIN_EMAIL || "admin@quizapp.com").trim().toLowerCase();
@@ -145,16 +195,9 @@ async function main() {
   });
   console.log(`✅ Admin account created/updated: ${admin.email}`);
 
-  // 3. Clear older questions if necessary and seed MSc Audiology questions
-  console.log("Seeding MSc Audiology questions...");
-  // Deactivate any questions that don't match the new question texts
-  const targetTexts = audiologyQuestions.map(q => q.questionText);
-  await prisma.question.updateMany({
-    where: { questionText: { notIn: targetTexts } },
-    data: { isActive: false }
-  });
-
-  let count = 0;
+  // 3. Seed Main MSc Audiology questions
+  console.log("Seeding MSc Audiology questions (Category: MAIN)...");
+  let mainCount = 0;
   for (const q of audiologyQuestions) {
     const existing = await prisma.question.findFirst({
       where: { questionText: q.questionText }
@@ -170,6 +213,7 @@ async function main() {
           optionD: q.optionD,
           correctOption: q.correctOption,
           explanation: q.explanation,
+          category: "MAIN",
           isActive: true
         }
       });
@@ -183,13 +227,55 @@ async function main() {
           optionD: q.optionD,
           correctOption: q.correctOption,
           explanation: q.explanation,
+          category: "MAIN",
           isActive: true
         }
       });
     }
-    count++;
+    mainCount++;
   }
-  console.log(`✅ Successfully seeded/updated ${count} MSc Audiology questions.`);
+  console.log(`✅ Successfully seeded/updated ${mainCount} MSc Audiology questions.`);
+
+  // 4. Seed Sample Practice questions
+  console.log("Seeding Sample Practice questions (Category: SAMPLE)...");
+  let sampleCount = 0;
+  for (const q of sampleQuestions) {
+    const existing = await prisma.question.findFirst({
+      where: { questionText: q.questionText }
+    });
+
+    if (existing) {
+      await prisma.question.update({
+        where: { id: existing.id },
+        data: {
+          optionA: q.optionA,
+          optionB: q.optionB,
+          optionC: q.optionC,
+          optionD: q.optionD,
+          correctOption: q.correctOption,
+          explanation: q.explanation,
+          category: "SAMPLE",
+          isActive: true
+        }
+      });
+    } else {
+      await prisma.question.create({
+        data: {
+          questionText: q.questionText,
+          optionA: q.optionA,
+          optionB: q.optionB,
+          optionC: q.optionC,
+          optionD: q.optionD,
+          correctOption: q.correctOption,
+          explanation: q.explanation,
+          category: "SAMPLE",
+          isActive: true
+        }
+      });
+    }
+    sampleCount++;
+  }
+  console.log(`✅ Successfully seeded/updated ${sampleCount} Sample Practice questions.`);
   console.log("🎉 Seeding completed successfully!");
 }
 

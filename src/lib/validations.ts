@@ -30,6 +30,7 @@ export const questionFormSchema = z.object({
     errorMap: () => ({ message: "Correct answer must be Option A, B, C, or D." }),
   }),
   explanation: z.string().trim().optional().nullable(),
+  category: z.string().trim().optional().default("MAIN"),
   isActive: z.boolean().default(true),
 });
 
@@ -44,4 +45,5 @@ export const settingsSchema = z.object({
   negativePoints: z.coerce.number().int().min(0, { message: "Negative points must be 0 or more." }),
   allowNegativeTotal: z.boolean(),
   quizEnabled: z.boolean(),
+  defaultQuestionTimer: z.coerce.number().int().min(5).max(300).default(30),
 });

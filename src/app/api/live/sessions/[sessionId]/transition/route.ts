@@ -77,9 +77,10 @@ export async function POST(
       questionStartedAt = null;
       questionEndsAt = null;
     } else if (targetStatus === "QUESTION_ACTIVE") {
-      // 30 seconds question timer
+      // Configurable question timer from session
+      const durationSeconds = session.timePerQuestion || 30;
       questionStartedAt = now;
-      questionEndsAt = new Date(now.getTime() + 30 * 1000);
+      questionEndsAt = new Date(now.getTime() + durationSeconds * 1000);
     } else if (targetStatus === "LEADERBOARD") {
       // End active answering
       // Keep questionStartedAt so response times can still be checked if needed
